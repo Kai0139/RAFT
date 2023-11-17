@@ -25,6 +25,7 @@ class RaftROS(object):
     def __init__(self, args) -> None:
         self.img1 = None
         self.img2 = None
+        self.save_idx = 0
         
         self.args = args
         self.model = torch.nn.DataParallel(RAFT(self.args))
@@ -34,54 +35,85 @@ class RaftROS(object):
         self.model.to(DEVICE)
         self.model.eval()
 
-        print("# of params: {}".format(count_parameters(self.model)))
+        # print("# of params: {}".format(count_parameters(self.model)))
 
         self.bridge = CvBridge()
         self.padder = None
-        self.img_sub = rospy.Subscriber("/mvsua_cam/image_raw1", Image, self.img_callback)
+        self.prev_img_msg = None
+        self.img_sub = rospy.Subscriber("/mvsua_cam/image_raw1", Image, self.img_callback_d, queue_size=1)
         # self.flow_pub = rospy.Publisher("/flow/compressed", CompressedImage, queue_size=1)
         self.flow_pub = rospy.Publisher("/flow", Image, queue_size=1)
 
     def img_callback(self, img_msg):
+        # self.save_image(img_msg)
+        # return
         if self.img1 is None:
             self.img1 = self.load_img(img_msg)
             self.padder = InputPadder(self.img1.shape)
             print(self.img1.shape)
             self.img1 = self.padder.pad(self.img1)[0]
             return
-        
 
         self.img2 = self.padder.pad(self.load_img(img_msg))[0]
 
-        flow_low, flow_up = self.model(self.img1, self.img2, iters=15, test_mode=True)
-        self.visualize(self.img1, flow_up)
+        # flow_low, flow_up = self.model(self.img1, self.img2, iters=20, test_mode=True)
+        # self.visualize(flow_up)
 
-        # RAFT
-        self.img1 = self.img2.detach()
+        self.img1 = self.img2.clone()
+
+    def img_callback_d(self, img_msg):
+        # self.save_image(img_msg)
+        # return
+        if self.prev_img_msg is None:
+            self.prev_img_msg = img_msg
+            return
+        
+        with torch.no_grad():
+            print("prev msg seq: {}".format(self.prev_img_msg.header.seq))
+            print("new msg seq: {}".format(img_msg.header.seq))
+            img1 = self.load_img(self.prev_img_msg)
+            img2 = self.load_img(img_msg)
+
+            padder = InputPadder(img1.shape)
+
+            img1, img2 = padder.pad(img1, img2)
+
+            self.prev_img_msg = img_msg
+
+            # flow_low, flow_up = self.model(img1, img2, iters=20, test_mode=True)
+            # self.visualize(flow_up)
+            
+            flow_low, flow = self.model(img1, img2, iters=20, test_mode=True)
+            print("original flow shape: {}".format(flow.shape))
+            flow = flow[0].permute(1,2,0).cpu().detach().numpy()
+            flow = flow_viz.flow_to_image(flow)
+            img_msg = self.bridge.cv2_to_imgmsg(flow, "bgr8")
+            self.flow_pub.publish(img_msg)
+            print("")
 
     def load_img(self, img_msg):
         cv_img = self.bridge.imgmsg_to_cv2(img_msg).imag
-        cv_img = cv2.resize(cv_img, (int(cv_img.shape[0]/2), int(cv_img.shape[1]/2)))
+        cv_img = cv2.resize(cv_img, (int(cv_img.shape[1]/2), int(cv_img.shape[0]/2)))
         np_img = np.array(cv_img).astype(np.uint8)
-        # print("img size: {}".format(np_img.shape))
         img = torch.from_numpy(np_img).permute(2, 0, 1).float()
+        print("img size: {}".format(np_img.shape))
         return img[None].to(DEVICE)
 
-    def visualize(self, img, flow):
-        # img = img[0].permute(1,2,0).cpu().numpy()
-        flow = flow[0].permute(1,2,0).cpu().detach().numpy()
-        
+    def visualize(self, flow):
+        flow = flow[0].permute(1,2,0).detach().cpu().numpy()
+        print("flow shape: {}".format(flow.shape))
         # map flow to rgb image
         flow = flow_viz.flow_to_image(flow)
-        print(np.array(flow[:, :, [2,1,0]]).shape)
-        # img_flow = np.concatenate([img, flow], axis=0)
-
-        # cv_img = img_flow[:, :, [2,1,0]]/255.0
+        # print(np.array(flow[:, :, [2,1,0]]).shape)
         # cv_img = flow[:, :, [2,1,0]]
-
-        # img_msg = self.bridge.cv2_to_compressed_imgmsg(cv_img, "png")
-        img_msg = self.bridge.cv2_to_imgmsg(np.array(flow[:, :, [2,1,0]]).astype(np.uint8), "rgb8")
+        img_msg = self.bridge.cv2_to_imgmsg(flow, "bgr8")
         self.flow_pub.publish(img_msg)
+
+    def save_image(self, img_msg):
+        print("save image")
+        cv_img = self.bridge.imgmsg_to_cv2(img_msg, "bgr8")
+        cv2.imwrite("cam_img/{}.png".format(self.save_idx), cv_img)
+        self.save_idx += 1
     
 if __name__ == "__main__":
     rospy.init_node("raft_node")

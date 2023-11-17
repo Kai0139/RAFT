@@ -17,9 +17,17 @@ import pathlib
 
 DEVICE = 'cuda'
 
+# def load_image(imfile):
+#     img = np.array(Image.open(imfile))
+#     print("opened image shape: {}".format(img.shape))
+#     img = img.astype(np.uint8)
+#     img = torch.from_numpy(img).permute(2, 0, 1).float()
+#     return img[None].to(DEVICE)
+
 def load_image(imfile):
-    img = np.array(Image.open(imfile)).astype(np.uint8)
-    print("image shape: {}".format(img.shape))
+    img = np.array(cv2.imread(imfile))
+    print("opened image shape: {}".format(img.shape))
+    img = img.astype(np.uint8)
     img = torch.from_numpy(img).permute(2, 0, 1).float()
     return img[None].to(DEVICE)
 
@@ -37,6 +45,7 @@ def viz(img, flo):
     # plt.show()
 
     # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
+    cv2.imwrite("image.png", img_flo[:, :, [2,1,0]])
     # cv2.waitKey()
 
 
@@ -62,12 +71,13 @@ def demo(args):
             image1, image2 = padder.pad(image1, image2)
 
             flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
+            print("original flow shape: {}".format(flow_up.shape))
             viz(image1, flow_up)
 
 
 if __name__ == '__main__':
     model_path = str(pathlib.Path(__file__).parent.joinpath("models", "raft-small.pth"))
-    img_path = str(pathlib.Path(__file__).parent.joinpath("demo-frames"))
+    img_path = str(pathlib.Path(__file__).parent.joinpath("cam_img"))
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', help="restore checkpoint", default=model_path)
     parser.add_argument('--path', help="dataset for evaluation", default=img_path)
