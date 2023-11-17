@@ -85,7 +85,8 @@ class RAFT(nn.Module):
 
     def forward(self, image1, image2, iters=12, flow_init=None, upsample=True, test_mode=False):
         """ Estimate optical flow between pair of frames """
-
+        # print(type(image1))
+        # print(type(image2))
         image1 = 2 * (image1 / 255.0) - 1.0
         image2 = 2 * (image2 / 255.0) - 1.0
 

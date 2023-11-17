@@ -13,12 +13,13 @@ from raft import RAFT
 from utils import flow_viz
 from utils.utils import InputPadder
 
-
+import pathlib
 
 DEVICE = 'cuda'
 
 def load_image(imfile):
     img = np.array(Image.open(imfile)).astype(np.uint8)
+    print("image shape: {}".format(img.shape))
     img = torch.from_numpy(img).permute(2, 0, 1).float()
     return img[None].to(DEVICE)
 
@@ -35,8 +36,8 @@ def viz(img, flo):
     # plt.imshow(img_flo / 255.0)
     # plt.show()
 
-    cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
-    cv2.waitKey()
+    # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
+    # cv2.waitKey()
 
 
 def demo(args):
@@ -54,6 +55,7 @@ def demo(args):
         images = sorted(images)
         for imfile1, imfile2 in zip(images[:-1], images[1:]):
             image1 = load_image(imfile1)
+            print("loaded image shape: {}".format(image1.shape))
             image2 = load_image(imfile2)
 
             padder = InputPadder(image1.shape)
@@ -64,10 +66,12 @@ def demo(args):
 
 
 if __name__ == '__main__':
+    model_path = str(pathlib.Path(__file__).parent.joinpath("models", "raft-small.pth"))
+    img_path = str(pathlib.Path(__file__).parent.joinpath("demo-frames"))
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', help="restore checkpoint")
-    parser.add_argument('--path', help="dataset for evaluation")
-    parser.add_argument('--small', action='store_true', help='use small model')
+    parser.add_argument('--model', help="restore checkpoint", default=model_path)
+    parser.add_argument('--path', help="dataset for evaluation", default=img_path)
+    parser.add_argument('--small', help='use small model', default=True)
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
     parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
     args = parser.parse_args()
