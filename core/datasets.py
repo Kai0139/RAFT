@@ -124,6 +124,30 @@ class FlyingChairs(FlowDataset):
 
         images = sorted(glob(osp.join(root, '*.ppm')))
         flows = sorted(glob(osp.join(root, '*.flo')))
+
+        # Clean up data
+        print("n ppm images: {}".format(len(images)))
+        print("n flow data: {}".format(len(flows)))
+        images_clean = []
+        flows_clean = []
+        dir_pref = "datasets/FlyingChairs_release/data/"
+        for i in range(len(flows)):
+            flow_index_str = flows[i][-14:-9]
+            img1_str = dir_pref + flow_index_str + "_img1.ppm"
+            img2_str = dir_pref + flow_index_str + "_img2.ppm"
+            if img1_str not in images or img2_str not in images:
+                print("flow not matched: {}".format(flows[i]))
+            else:
+                flows_clean.append(flows[i])
+                images_clean.append(img1_str)
+                images_clean.append(img2_str)
+
+        images = images_clean
+        flows = flows_clean
+        print("after clean")
+        print("n ppm images: {}".format(len(images)))
+        print("n flow data: {}".format(len(flows)))
+
         assert (len(images)//2 == len(flows))
 
         split_list = np.loadtxt('chairs_split.txt', dtype=np.int32)
@@ -228,7 +252,7 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
         train_dataset = KITTI(aug_params, split='training')
 
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 
-        pin_memory=False, shuffle=True, num_workers=4, drop_last=True)
+        pin_memory=False, shuffle=True, num_workers=0, drop_last=True)
 
     print('Training with %d image pairs' % len(train_dataset))
     return train_loader

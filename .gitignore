@@ -7,3 +7,5 @@ build
 correlation.egg-info
 cam_img
 image.png
+
+.vscode
