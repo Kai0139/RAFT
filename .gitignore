@@ -9,3 +9,5 @@ cam_img
 image.png
 
 .vscode
+runs/
+checkpoints

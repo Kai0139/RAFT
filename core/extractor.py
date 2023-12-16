@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import sys
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_planes, planes, norm_fn='group', stride=1):
@@ -251,17 +253,26 @@ class SmallEncoder(nn.Module):
 
         x = self.conv1(x)
         x = self.norm1(x)
-        x = self.relu1(x)
+        x1 = self.relu1(x)
+        print("x1 shape: {}".format(x1.shape))
+        x2 = self.layer1(x1)
+        print("x2 shape: {}".format(x2.shape))
+        x3 = self.layer2(x2)
+        print("x3 shape: {}".format(x3.shape))
+        x4 = self.layer3(x3)
+        print("x4 shape: {}".format(x4.shape))
+        x4 = self.conv2(x4)
+        print("x4c shape: {}".format(x4.shape))
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.conv2(x)
+        sys.exit()
 
         if self.training and self.dropout is not None:
-            x = self.dropout(x)
+            x4 = self.dropout(x4)
 
         if is_list:
-            x = torch.split(x, [batch_dim, batch_dim], dim=0)
+            x1 = torch.split(x1, [batch_dim, batch_dim], dim=0)
+            x2 = torch.split(x2, [batch_dim, batch_dim], dim=0)
+            x3 = torch.split(x3, [batch_dim, batch_dim], dim=0)
+            x4 = torch.split(x4, [batch_dim, batch_dim], dim=0)
 
-        return x
+        return [x1, x2, x3, x4]

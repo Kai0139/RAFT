@@ -14,6 +14,8 @@ import os.path as osp
 from utils import frame_utils
 from utils.augmentor import FlowAugmentor, SparseFlowAugmentor
 
+from PIL import Image, ImageFile
+
 
 class FlowDataset(data.Dataset):
     def __init__(self, aug_params=None, sparse=False):
@@ -119,7 +121,7 @@ class MpiSintel(FlowDataset):
 
 
 class FlyingChairs(FlowDataset):
-    def __init__(self, aug_params=None, split='train', root='datasets/FlyingChairs_release/data'):
+    def __init__(self, aug_params=None, split='train', root='datasets/FlyingChairs_release/data_small'):
         super(FlyingChairs, self).__init__(aug_params)
 
         images = sorted(glob(osp.join(root, '*.ppm')))
@@ -130,14 +132,24 @@ class FlyingChairs(FlowDataset):
         print("n flow data: {}".format(len(flows)))
         images_clean = []
         flows_clean = []
-        dir_pref = "datasets/FlyingChairs_release/data/"
+        dir_pref = root + "/"
         for i in range(len(flows)):
             flow_index_str = flows[i][-14:-9]
             img1_str = dir_pref + flow_index_str + "_img1.ppm"
             img2_str = dir_pref + flow_index_str + "_img2.ppm"
             if img1_str not in images or img2_str not in images:
                 print("flow not matched: {}".format(flows[i]))
+                
             else:
+                # try:
+                #     imgf1 = Image.open(img1_str)
+                #     imgf1.load()
+                #     imgf2 = Image.open(img2_str)
+                #     imgf2.load()
+                # except OSError as e:
+                #     print("Truncated image at {} or {}".format(img1_str, img2_str))
+                #     print(e)
+                #     continue
                 flows_clean.append(flows[i])
                 images_clean.append(img1_str)
                 images_clean.append(img2_str)
