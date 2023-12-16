@@ -13,8 +13,9 @@ docker create --volume ${DOCKER_DATASETS}:${DOCKER_DATASETS} \
     --privileged \
     --net host \
     --gpus all \
-    --name raft_root \
+    --name raft_root_shm16 \
     --interactive \
+    --shm-size=16gb \
     ${IMAGE_NAME}:${IMAGE_TAG}
 
 # end
