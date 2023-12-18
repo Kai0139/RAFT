@@ -2,6 +2,25 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class FlowHeadMTS(nn.Module):
+    def __init__(self, input_dim=128, hidden_dim=[96, 64, 32]):
+        super(FlowHead, self).__init__()
+        self.conv1 = nn.Conv2d(input_dim, hidden_dim[0], 3, padding=1)
+        self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
+        self.conv2 = nn.Conv2d(hidden_dim[0], hidden_dim[1], 3, padding=1)
+        self.conv3 = nn.Conv2d(hidden_dim[1], hidden_dim[2], 3, padding=1)
+        self.conv4 = nn.Conv2d(hidden_dim[2], 2, 3, padding=1)
+        self.relu = nn.ReLU(inplace=True)
+    
+    def forward(self, x):
+        x = self.relu(self.conv1(x))
+        x = self.upsample(x)    # upsample to 1/4
+        x = self.relu(self.conv2(x))
+        x = self.upsample(x)    # upsample to 1/2
+        x = self.relu(self.conv3(x))
+        x = self.upsample(x)    # upsample to 1
+        x = self.relu(self.conv4(x))    # flow result
+        return x
 
 class FlowHead(nn.Module):
     def __init__(self, input_dim=128, hidden_dim=256):
