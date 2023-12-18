@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class FlowHeadMTS(nn.Module):
     def __init__(self, input_dim=128, hidden_dim=[96, 64, 32]):
-        super(FlowHead, self).__init__()
+        super(FlowHeadMTS, self).__init__()
         self.conv1 = nn.Conv2d(input_dim, hidden_dim[0], 3, padding=1)
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
         self.conv2 = nn.Conv2d(hidden_dim[0], hidden_dim[1], 3, padding=1)
@@ -40,6 +40,7 @@ class ConvGRU(nn.Module):
         self.convq = nn.Conv2d(hidden_dim+input_dim, hidden_dim, 3, padding=1)
 
     def forward(self, h, x):
+        # print("gru input h dim: {} x dim: {}".format(h.shape, x.shape))
         hx = torch.cat([h, x], dim=1)
 
         z = torch.sigmoid(self.convz(hx))
@@ -114,13 +115,28 @@ class BasicMotionEncoder(nn.Module):
         cor_flo = torch.cat([cor, flo], dim=1)
         out = F.relu(self.conv(cor_flo))
         return torch.cat([out, flow], dim=1)
-
+    
 class SmallUpdateBlock(nn.Module):
-    def __init__(self, args, hidden_dim=96):
+    def __init__(self, args, hidden_dim=36):
         super(SmallUpdateBlock, self).__init__()
         self.encoder = SmallMotionEncoder(args)
-        self.gru = ConvGRU(hidden_dim=hidden_dim, input_dim=82+64)
+        self.gru = ConvGRU(hidden_dim=hidden_dim, input_dim=106)
         self.flow_head = FlowHead(hidden_dim, hidden_dim=128)
+
+    def forward(self, net, inp, corr, flow):
+        motion_features = self.encoder(flow, corr)
+        inp = torch.cat([inp, motion_features], dim=1)
+        net = self.gru(net, inp)
+        delta_flow = self.flow_head(net)
+
+        return net, None, delta_flow
+
+class SmallUpdateBlockMTS(nn.Module):
+    def __init__(self, args, hidden_dim=96):
+        super(SmallUpdateBlockMTS, self).__init__()
+        self.encoder = SmallMotionEncoder(args)
+        self.gru = ConvGRU(hidden_dim=hidden_dim, input_dim=82+64)
+        self.flow_head = FlowHeadMTS(hidden_dim, hidden_dim=[96, 64, 32])
 
     def forward(self, net, inp, corr, flow):
         motion_features = self.encoder(flow, corr)
@@ -153,6 +169,7 @@ class BasicUpdateBlock(nn.Module):
         # scale mask to balence gradients
         mask = .25 * self.mask(net)
         return net, mask, delta_flow
+
 
 
 

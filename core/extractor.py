@@ -62,8 +62,8 @@ class BottleneckBlock(nn.Module):
         super(BottleneckBlock, self).__init__()
   
         self.conv1 = nn.Conv2d(in_planes, planes//4, kernel_size=1, padding=0)
-        self.conv2 = nn.Conv2d(planes//4, planes//4, kernel_size=3, padding=1, stride=stride)
-        self.conv3 = nn.Conv2d(planes//4, planes, kernel_size=1, padding=0)
+        # self.conv2 = nn.Conv2d(planes//4, planes//4, kernel_size=3, padding=1, stride=stride)
+        self.conv3 = nn.Conv2d(planes//4, planes, kernel_size=1, padding=0, stride=stride)
         self.relu = nn.ReLU(inplace=True)
 
         num_groups = planes // 8
@@ -108,15 +108,16 @@ class BottleneckBlock(nn.Module):
         # print("bottle neck x shape: {}".format(x.shape))
         y = x
         y = self.relu(self.norm1(self.conv1(y)))
-        y = self.relu(self.norm2(self.conv2(y)))
+        # y = self.relu(self.norm2(self.conv2(y)))
         y = self.relu(self.norm3(self.conv3(y)))
         # print("bottle neck y shape: {}".format(y.shape))
 
-        if self.downsample is not None:
-            # print("\ndownsample")
-            x = self.downsample(x)
+        # if self.downsample is not None:
+        #     # print("\ndownsample")
+        #     x = self.downsample(x)
 
-        return self.relu(x+y)
+        # return self.relu(x+y)
+        return y
 
 class BasicEncoder(nn.Module):
     def __init__(self, output_dim=128, norm_fn='batch', dropout=0.0):
@@ -196,7 +197,7 @@ class BasicEncoder(nn.Module):
 
 
 class SmallEncoder(nn.Module):
-    def __init__(self, output_dim=40, norm_fn='batch', dropout=0.0):
+    def __init__(self, output_dim=36, norm_fn='batch', dropout=0.0):
         super(SmallEncoder, self).__init__()
         self.norm_fn = norm_fn
 
@@ -216,15 +217,15 @@ class SmallEncoder(nn.Module):
         self.relu1 = nn.ReLU(inplace=True)
 
         self.in_planes = 12
-        self.layer1 = self._make_layer(12,  stride=1)
-        self.layer2 = self._make_layer(24, stride=2)
-        self.layer3 = self._make_layer(32, stride=2)
+        self.layer1 = self._make_layer(18,  stride=1)
+        self.layer2 = self._make_layer(24, stride=1)
+        self.layer3 = self._make_layer(30, stride=2)
 
         self.dropout = None
         if dropout > 0:
             self.dropout = nn.Dropout2d(p=dropout)
         
-        self.conv2 = nn.Conv2d(32, output_dim, kernel_size=1)
+        self.conv2 = nn.Conv2d(30, output_dim, kernel_size=1)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

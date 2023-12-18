@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from update import BasicUpdateBlock, SmallUpdateBlock
+from update import BasicUpdateBlock, SmallUpdateBlock, SmallUpdateBlockMTS
 from extractor import BasicEncoder, SmallEncoder
 from corr import CorrBlock, AlternateCorrBlock
-from utils.utils import bilinear_sampler, coords_grid, upflow8
+from utils.utils import bilinear_sampler, coords_grid, upflow8, upflow_n
 
 try:
     autocast = torch.cuda.amp.autocast
@@ -27,8 +27,8 @@ class RAFT(nn.Module):
         self.args = args
 
         if args.small:
-            self.hidden_dim = hdim = 96
-            self.context_dim = cdim = 64
+            self.hidden_dim = hdim = 36
+            self.context_dim = cdim = 24
             args.corr_levels = 1
             args.corr_radius = 9
         
@@ -45,15 +45,10 @@ class RAFT(nn.Module):
             self.args.alternate_corr = False
 
         # feature network, context network, and update block
-        if args.small:
-            self.fnet = SmallEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)        
-            self.cnet = SmallEncoder(output_dim=hdim+cdim, norm_fn='none', dropout=args.dropout)
-            self.update_block = SmallUpdateBlock(self.args, hidden_dim=hdim)
-
-        else:
-            self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=args.dropout)        
-            self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=args.dropout)
-            self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
+        self.fnet = SmallEncoder(output_dim=36, norm_fn='instance', dropout=args.dropout)        
+        self.cnet = SmallEncoder(output_dim=hdim+cdim, norm_fn='none', dropout=args.dropout)
+        self.update_block = SmallUpdateBlock(self.args, hidden_dim=hdim)
+        # self.update_block = SmallUpdateBlockMTS(self.args, hidden_dim=hdim)
 
     def freeze_bn(self):
         for m in self.modules():
@@ -65,6 +60,15 @@ class RAFT(nn.Module):
         N, C, H, W = img.shape
         coords0 = coords_grid(N, H//8, W//8, device=img.device)
         coords1 = coords_grid(N, H//8, W//8, device=img.device)
+
+        # optical flow computed as difference: flow = coords1 - coords0
+        return coords0, coords1
+    
+    def initialize_flow_scale(self, img, scale):
+        """ Flow is represented as difference between two coordinate grids flow = coords1 - coords0"""
+        N, C, H, W = img.shape
+        coords0 = coords_grid(N, H//scale, W//scale, device=img.device)
+        coords1 = coords_grid(N, H//scale, W//scale, device=img.device)
 
         # optical flow computed as difference: flow = coords1 - coords0
         return coords0, coords1
@@ -98,13 +102,11 @@ class RAFT(nn.Module):
         # run the feature network
         with autocast(enabled=self.args.mixed_precision):
             fmap1, fmap2 = self.fnet([image1, image2])        
-        
+        print("fmap shape: {}".format(fmap1.shape))
         fmap1 = fmap1.float()
         fmap2 = fmap2.float()
-        if self.args.alternate_corr:
-            corr_fn = AlternateCorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
-        else:
-            corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
+
+        corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
 
         # run the context network
         with autocast(enabled=self.args.mixed_precision):
@@ -113,7 +115,8 @@ class RAFT(nn.Module):
             net = torch.tanh(net)
             inp = torch.relu(inp)
 
-        coords0, coords1 = self.initialize_flow(image1)
+        # coords0, coords1 = self.initialize_flow(image1)
+        coords0, coords1 = self.initialize_flow_scale(image1, 4)
 
         if flow_init is not None:
             coords1 = coords1 + flow_init
@@ -130,11 +133,15 @@ class RAFT(nn.Module):
             # F(t+1) = F(t) + \Delta(t)
             coords1 = coords1 + delta_flow
 
-            # upsample predictions
-            if up_mask is None:
-                flow_up = upflow8(coords1 - coords0)
-            else:
-                flow_up = self.upsample_flow(coords1 - coords0, up_mask)
+            # # upsample predictions
+            # if up_mask is None:
+            #     flow_up = upflow8(coords1 - coords0)
+            # else:
+            #     flow_up = self.upsample_flow(coords1 - coords0, up_mask)
+
+            # no need to upsample
+            # flow_up = coords1 - coords0
+            flow_up = upflow_n(coords1 - coords0, 4)
             
             flow_predictions.append(flow_up)
 
