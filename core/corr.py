@@ -22,8 +22,10 @@ class CorrBlock:
         corr = corr.reshape(batch*h1*w1, dim, h2, w2)
         
         self.corr_pyramid.append(corr)
+        print("corr pyr shape: {}".format(corr.shape))
         for i in range(self.num_levels-1):
             corr = F.avg_pool2d(corr, 2, stride=2)
+            print("corr pyr shape: {}".format(corr.shape))
             self.corr_pyramid.append(corr)
 
     def __call__(self, coords):

@@ -45,7 +45,7 @@ class RAFT(nn.Module):
             self.args.alternate_corr = False
 
         # feature network, context network, and update block
-        self.fnet = SmallEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)        
+        self.fnet = ContextEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)        
         self.cnet = ContextEncoder(output_dim=hdim+cdim, norm_fn='none', dropout=args.dropout)
         self.update_block = SmallUpdateBlock(self.args, hidden_dim=hdim)
 
@@ -105,12 +105,27 @@ class RAFT(nn.Module):
 
         # run the feature network
         with autocast(enabled=self.args.mixed_precision):
-            fmap1, fmap2 = self.fnet([image1, image2])
-        
-        fmap1 = fmap1.float()
-        fmap2 = fmap2.float()
+            # fmap1, fmap2 = self.fnet([image1, image2])
+            x1, x2, x3 = self.fnet([image1, image2])
+            
+        fmap1_8,  fmap2_8 = x3
+        fmap1_8 = fmap1_8.float()
+        fmap2_8 = fmap2_8.float()
 
-        corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
+        fmap1_4,  fmap2_4 = x2
+        fmap1_4 = fmap1_4.float()
+        fmap2_4 = fmap2_4.float()
+
+        fmap1_2,  fmap2_2 = x1
+        fmap1_2 = fmap1_2.float()
+        fmap2_2 = fmap2_2.float()
+
+        corr_fn_dict = {
+            8: CorrBlock(fmap1_8, fmap2_8, radius=self.args.corr_radius),
+            4: CorrBlock(fmap1_4, fmap2_4, radius=self.args.corr_radius),
+            2: CorrBlock(fmap1_2, fmap2_2, radius=self.args.corr_radius)
+        }
+        
 
         # run the context network
         with autocast(enabled=self.args.mixed_precision):
@@ -140,22 +155,27 @@ class RAFT(nn.Module):
 
         flow_predictions = []
         for s in scales:
+            print("\nscale: {}".format(s))
             coords1 = coords1_dict[s].detach()
-            corr = corr_fn(coords1) # index correlation volume
+            print("coords1 shape: {}".format(coords1.shape))
+            corr = corr_fn_dict[s](coords1) # index correlation volume
 
             flow = coords1 - coords0_dict[s]
             with autocast(enabled=self.args.mixed_precision):
-                net, up_mask, delta_flow = self.update_block(net[s], inp[s], corr, flow)
+                net[s], up_mask, delta_flow = self.update_block(net[s], inp[s], corr, flow)
 
             # F(t+1) = F(t) + \Delta(t)
-            coords1[s] = coords1 + delta_flow
+            # print("\nscale = {}".format(s))
+            # print("coords1 shape = {}".format(coords1.shape))
+            # print("delta flow shape = {}".format(delta_flow.shape))
+            coords1_dict[s] = coords1 + delta_flow
 
             # upsample predictions
             flow_up = upflow_n(coords1 - coords0_dict[s], s)
 
             # update current prediction to upper scale
             if s > 2:
-                coords1[s//2] = upflow_n(coords1[s], 2)
+                coords1_dict[s//2] = upflow_n(coords1_dict[s], 2)
             
             flow_predictions.append(flow_up)
 
