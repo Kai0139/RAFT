@@ -4,7 +4,7 @@ sys.path.append('core')
 
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
 
 import cv2
 import time
@@ -137,7 +137,7 @@ class Logger:
 def train(args):
     print("gpus: {}".format(args.gpus))
     # model = nn.DataParallel(RAFT(args), device_ids=args.gpus).cuda()
-    model = nn.DataParallel(RAFT(args), device_ids=[0, 1, 2]).cuda()
+    model = nn.DataParallel(RAFT(args), device_ids=[0, 1]).cuda()
     print("Parameter Count: %d" % count_parameters(model))
 
     if args.restore_ckpt is not None:

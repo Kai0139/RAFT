@@ -47,8 +47,9 @@ class CorrBlock:
             corr = bilinear_sampler(corr, coords_lvl)
             corr = corr.view(batch, h1, w1, -1)
             out_pyramid.append(corr)
-
+        # print("out pyramid shape: {}".format([i.shape for i in out_pyramid]))
         out = torch.cat(out_pyramid, dim=-1)
+        # print("out shape: {}".format(out.shape))
         return out.permute(0, 3, 1, 2).contiguous().float()
 
     @staticmethod
