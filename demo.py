@@ -76,8 +76,8 @@ def demo(args):
 
 
 if __name__ == '__main__':
-    model_path = str(pathlib.Path(__file__).parent.joinpath("models", "raft-small.pth"))
-    img_path = str(pathlib.Path(__file__).parent.joinpath("cam_img"))
+    model_path = str(pathlib.Path(__file__).parent.joinpath("checkpoints", "raft-chairs-4x.pth"))
+    img_path = str(pathlib.Path(__file__).parent.joinpath("demo-frames"))
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', help="restore checkpoint", default=model_path)
     parser.add_argument('--path', help="dataset for evaluation", default=img_path)
