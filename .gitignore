@@ -5,3 +5,5 @@ datasets
 pytorch_env
 build
 correlation.egg-info
+checkpoints*
+runs

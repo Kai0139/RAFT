@@ -124,6 +124,40 @@ class FlyingChairs(FlowDataset):
 
         images = sorted(glob(osp.join(root, '*.ppm')))
         flows = sorted(glob(osp.join(root, '*.flo')))
+
+        # Clean up data
+        print("n ppm images: {}".format(len(images)))
+        print("n flow data: {}".format(len(flows)))
+        images_clean = []
+        flows_clean = []
+        dir_pref = root + "/"
+        for i in range(len(flows)):
+            flow_index_str = flows[i][-14:-9]
+            img1_str = dir_pref + flow_index_str + "_img1.ppm"
+            img2_str = dir_pref + flow_index_str + "_img2.ppm"
+            if img1_str not in images or img2_str not in images:
+                print("flow not matched: {}".format(flows[i]))
+                
+            else:
+                # try:
+                #     imgf1 = Image.open(img1_str)
+                #     imgf1.load()
+                #     imgf2 = Image.open(img2_str)
+                #     imgf2.load()
+                # except OSError as e:
+                #     print("Truncated image at {} or {}".format(img1_str, img2_str)) 22367
+                #     print(e)
+                #     continue
+                flows_clean.append(flows[i])
+                images_clean.append(img1_str)
+                images_clean.append(img2_str)
+
+        images = images_clean
+        flows = flows_clean
+        print("after clean")
+        print("n ppm images: {}".format(len(images)))
+        print("n flow data: {}".format(len(flows)))
+
         assert (len(images)//2 == len(flows))
 
         split_list = np.loadtxt('chairs_split.txt', dtype=np.int32)
