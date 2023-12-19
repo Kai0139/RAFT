@@ -45,7 +45,7 @@ def viz(img, flo):
     # plt.show()
 
     # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
-    cv2.imwrite("image.png", img_flo[:, :, [2,1,0]])
+    cv2.imwrite("image.png", img_flo[:, :, [0,1,2]])
     # cv2.waitKey()
 
 
@@ -70,7 +70,7 @@ def demo(args):
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1, image2)
 
-            flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
+            flow_low, flow_up = model(image1, image2, iters=12, test_mode=True)
             print("original flow shape: {}".format(flow_up.shape))
             viz(image1, flow_up)
 
