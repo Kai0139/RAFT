@@ -4,7 +4,7 @@ sys.path.append('core')
 
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
 
 import cv2
 import time
@@ -137,7 +137,7 @@ class Logger:
 def train(args):
     print("gpus: {}".format(args.gpus))
     # model = nn.DataParallel(RAFT(args), device_ids=args.gpus).cuda()
-    model = nn.DataParallel(RAFT(args), device_ids=[0, 1]).cuda()
+    model = nn.DataParallel(RAFT(args), device_ids=[0, 1, 2]).cuda()
     print("Parameter Count: %d" % count_parameters(model))
 
     if args.restore_ckpt is not None:
@@ -163,7 +163,7 @@ def train(args):
     while should_keep_training:
 
         for i_batch, data_blob in enumerate(train_loader):
-            print("batch: {}".format(i_batch))
+            # print("batch: {}".format(i_batch))
             image1, image2, flow, valid = [x.cuda() for x in data_blob]
 
             if args.add_noise:
@@ -171,7 +171,7 @@ def train(args):
                 image1 = (image1 + stdv * torch.randn(*image1.shape).cuda()).clamp(0.0, 255.0)
                 image2 = (image2 + stdv * torch.randn(*image2.shape).cuda()).clamp(0.0, 255.0)
             
-            flow_predictions = model(image1, image2, iters=args.iters)            
+            flow_predictions = model(image1, image2, iters=args.iters)
             loss, metrics = sequence_loss(flow_predictions, flow, valid, args.gamma)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)                
@@ -203,6 +203,7 @@ def train(args):
                     model.module.freeze_bn()
             
             total_steps += 1
+            print("steps: {}".format(total_steps))
 
             if total_steps > args.num_steps:
                 should_keep_training = False

@@ -130,7 +130,7 @@ class MpiSintel(FlowDataset):
 
 
 class FlyingChairs(FlowDataset):
-    def __init__(self, aug_params=None, split='train', root='datasets/FlyingChairs_release/data_small'):
+    def __init__(self, aug_params=None, split='train', root='datasets/FlyingChairs_release/data'):
         super(FlyingChairs, self).__init__(aug_params)
 
         images = sorted(glob(osp.join(root, '*.ppm')))
@@ -156,7 +156,7 @@ class FlyingChairs(FlowDataset):
                 #     imgf2 = Image.open(img2_str)
                 #     imgf2.load()
                 # except OSError as e:
-                #     print("Truncated image at {} or {}".format(img1_str, img2_str))
+                #     print("Truncated image at {} or {}".format(img1_str, img2_str)) 22367
                 #     print(e)
                 #     continue
                 flows_clean.append(flows[i])
