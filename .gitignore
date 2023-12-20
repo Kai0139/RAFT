@@ -11,3 +11,7 @@ image.png
 .vscode
 runs/
 checkpoints
+
+demo-frames
+chair_frames
+results

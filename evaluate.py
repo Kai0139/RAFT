@@ -176,7 +176,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load(args.model))
+    model_path = "models/raft-chairs-4x.pth"
+    model.load_state_dict(torch.load(model_path))
 
     model.cuda()
     model.eval()
@@ -185,13 +186,8 @@ if __name__ == '__main__':
     # create_kitti_submission(model.module)
 
     with torch.no_grad():
-        if args.dataset == 'chairs':
-            validate_chairs(model.module)
+        validate_chairs(model.module)
+        # validate_sintel(model.module)
 
-        elif args.dataset == 'sintel':
-            validate_sintel(model.module)
-
-        elif args.dataset == 'kitti':
-            validate_kitti(model.module)
 
 
