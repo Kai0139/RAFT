@@ -22,7 +22,7 @@ RUN rosdep init && rosdep update
 # RUN /bin/bash -c "cd $HOME/catkin_ws/ &&\
 #     source $HOME/.bashrc && source /opt/ros/noetic/setup.bash &&\
 #     catkin_make"
-RUN pip3 install scipy packaging tensor board -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip3 install scipy packaging tensorboard -i https://pypi.tuna.tsinghua.edu.cn/simple
 # For cuda 11.7: pip3 install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
 RUN pip3 install torch torchvision torchaudio -i https://pypi.tuna.tsinghua.edu.cn/simple
 

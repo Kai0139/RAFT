@@ -175,8 +175,9 @@ if __name__ == '__main__':
     parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
     args = parser.parse_args()
 
+    model_path = "models/raft-chairs-small.pth"
     model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load(args.model))
+    model.load_state_dict(torch.load(model_path))
 
     model.cuda()
     model.eval()
@@ -185,13 +186,14 @@ if __name__ == '__main__':
     # create_kitti_submission(model.module)
 
     with torch.no_grad():
-        if args.dataset == 'chairs':
-            validate_chairs(model.module)
+        validate_chairs(model.module)
+        # if args.dataset == 'chairs':
+        #     validate_chairs(model.module)
 
-        elif args.dataset == 'sintel':
-            validate_sintel(model.module)
+        # elif args.dataset == 'sintel':
+        #     validate_sintel(model.module)
 
-        elif args.dataset == 'kitti':
-            validate_kitti(model.module)
+        # elif args.dataset == 'kitti':
+        #     validate_kitti(model.module)
 
 

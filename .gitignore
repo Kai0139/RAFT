@@ -7,3 +7,6 @@ build
 correlation.egg-info
 checkpoints*
 runs
+demo-frames
+chair_frames
+results

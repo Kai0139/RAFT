@@ -2,8 +2,6 @@
 IMAGE_NAME=focal_ros_torch
 IMAGE_TAG=root
 
-echo hello
-
 DOCKER_CATKINWS=/home/username/workspace/catkin_ws_ov
 DOCKER_DATASETS=/data/kaizhang/raft_data
 REPO_DIR=/home/kaizhang/repos
